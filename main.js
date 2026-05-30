@@ -3,24 +3,28 @@ function generateSystemPrompt(intensity, to) {
     
     let prompt = `You are a professional translation assistant. First, automatically identify the type of input content (single word, phrase, sentence, or paragraph), then provide the corresponding translation result according to the following rules.
 
-Important rules:
+IMPORTANT FORMATTING RULES:
 - Output language must be Chinese (except for the original English content)
 - Always translate into target language: ${to}
-- DO NOT use any Markdown formatting: no #, *, -, **, or other special formatting characters
-- Output must be plain text only
-- For single words or phrases: ALWAYS put the original word/phrase at the TOP of the output, followed by a blank line
+- DO NOT use any Markdown formatting: NO #, NO *, NO -, NO **, NO headers, NO bold
+- Output must be PLAIN TEXT only
+- Use Chinese colons and punctuation
+- For single words or phrases: ALWAYS put the ORIGINAL word/phrase on the FIRST LINE, followed by a BLANK LINE
+- Each section (释义, 变形, 同根词, 常用搭配, 例句) should be followed by a blank line after its content
+
+---
 
 `;
 
     if (level === 1) {
-        prompt += `等级1 - 基础翻译
+        prompt += `LEVEL 1 - BASIC TRANSLATION
 For ALL input types (word, phrase, sentence, paragraph):
-Output ONLY the translation result directly
-No explanations, no examples, no additional information
-Keep translation accurate and concise`;
+- Output ONLY the translation result directly
+- NO explanations, NO examples, NO additional information
+- Keep translation accurate and concise`;
     } else {
-        prompt += `1. If the input is a SINGLE WORD:\n`;
-        prompt += `First line: [original word]\n\n`;
+        prompt += `1. IF INPUT IS A SINGLE WORD:\n`;
+        prompt += `First line (EXACTLY): [original word]\n\n`;
         prompt += `释义：\n`;
         prompt += `[词性1]: [中文释义1]\n`;
         prompt += `[词性2]: [中文释义2]\n`;
@@ -35,18 +39,20 @@ Keep translation accurate and concise`;
         
         if (level >= 3) {
             prompt += `同根词：\n`;
-            for (let i = 1; i <= 4; i++) {
-                prompt += `${i}. [单词${i}] ([词性]): [中文释义]\n`;
-            }
+            prompt += `1. [单词1] ([词性]): [中文释义]\n`;
+            prompt += `2. [单词2] ([词性]): [中文释义]\n`;
+            prompt += `3. [单词3] ([词性]): [中文释义]\n`;
+            prompt += `4. [单词4] ([词性]): [中文释义]\n`;
             prompt += `5. [单词5] ([词性]): [中文释义]\n\n`;
         }
         
         if (level >= 4) {
             prompt += `常用搭配：\n`;
-            for (let i = 1; i <= 5; i++) {
-                prompt += `${i}. [英文词组${i}] — [中文翻译]\n`;
-            }
-            prompt += `\n`;
+            prompt += `1. [英文词组1] — [中文翻译]\n`;
+            prompt += `2. [英文词组2] — [中文翻译]\n`;
+            prompt += `3. [英文词组3] — [中文翻译]\n`;
+            prompt += `4. [英文词组4] — [中文翻译]\n`;
+            prompt += `5. [英文词组5] — [中文翻译]\n\n`;
         }
         
         let exampleCount = level === 2 ? 1 : (level === 3 ? 2 : 3);
@@ -57,9 +63,9 @@ Keep translation accurate and concise`;
             }
         }
         
-        prompt += `\n\n`;
-        prompt += `2. If the input is a PHRASE:\n`;
-        prompt += `First line: [original phrase]\n\n`;
+        prompt += `\n`;
+        prompt += `2. IF INPUT IS A PHRASE:\n`;
+        prompt += `First line (EXACTLY): [original phrase]\n\n`;
         prompt += `释义：\n`;
         prompt += `1. [中文释义1]\n`;
         prompt += `2. [中文释义2]\n`;
@@ -75,12 +81,12 @@ Keep translation accurate and concise`;
             }
         }
         
-        prompt += `\n\n`;
-        prompt += `3. If the input is a SENTENCE or PARAGRAPH:\n`;
-        prompt += `Directly provide accurate, fluent translation\n`;
-        prompt += `Keep the translation colloquial, professional, and elegant, avoiding machine translation style\n`;
-        prompt += `Strictly translate only the text content, do not interpret, comment or expand\n`;
-        prompt += `Output ONLY the translation result`;
+        prompt += `\n`;
+        prompt += `3. IF INPUT IS A SENTENCE or PARAGRAPH:\n`;
+        prompt += `- Directly provide accurate, fluent translation\n`;
+        prompt += `- Keep the translation colloquial, professional, and elegant, avoiding machine translation style\n`;
+        prompt += `- Strictly translate only the text content, do not interpret, comment or expand\n`;
+        prompt += `- Output ONLY the translation result, NO labels, NO explanations`;
     }
     
     return prompt;
