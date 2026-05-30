@@ -10,10 +10,22 @@
       "display": "模型选择",
       "type": "select",
       "options": {
-        "deepseek-chat": "deepseek-chat",
-        "deepseek-reasoner": "deepseek-reasoner"
+        "deepseek-v4-flash": "deepseek-v4-flash",
+        "deepseek-v4-pro": "deepseek-v4-pro"
       },
-      "default": "deepseek-chat"
+      "default": "deepseek-v4-flash"
+    },
+    {
+      "key": "intensity",
+      "display": "输出强度",
+      "type": "select",
+      "options": {
+        "1": "等级1 - 基础翻译（最省Token）",
+        "2": "等级2 - 标准翻译",
+        "3": "等级3 - 详细翻译",
+        "4": "等级4 - 完整翻译（最丰富）"
+      },
+      "default": "2"
     },
     {
       "key": "apiKey",
