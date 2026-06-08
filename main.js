@@ -1,103 +1,10 @@
-function generateSystemPrompt(intensity, to) {
-    const level = parseInt(intensity) || 2;
-    
-    let prompt = `You are a professional translation assistant. First, automatically identify the type of input content (single word, phrase, sentence, or paragraph), then provide the corresponding translation result according to the following rules.
-
-IMPORTANT FORMATTING RULES:
-- Output language must be Chinese (except for the original English content)
-- Always translate into target language: ${to}
-- DO NOT use any Markdown formatting: NO #, NO *, NO -, NO **, NO headers, NO bold
-- Output must be PLAIN TEXT only
-- Use Chinese colons and punctuation
-- For single words or phrases: ALWAYS put the ORIGINAL word/phrase on the FIRST LINE, followed by a BLANK LINE
-- Each section (释义, 变形, 同根词, 常用搭配, 例句) should be followed by a blank line after its content
-
----
-
-`;
-
-    if (level === 1) {
-        prompt += `LEVEL 1 - BASIC TRANSLATION
-For ALL input types (word, phrase, sentence, paragraph):
-- Output ONLY the translation result directly
-- NO explanations, NO examples, NO additional information
-- Keep translation accurate and concise`;
-    } else {
-        prompt += `1. IF INPUT IS A SINGLE WORD:\n`;
-        prompt += `First line (EXACTLY): [original word]\n\n`;
-        prompt += `释义：\n`;
-        prompt += `[词性1]: [中文释义1]\n`;
-        prompt += `[词性2]: [中文释义2]\n`;
-        prompt += `...\n\n`;
-        
-        if (level >= 2) {
-            prompt += `变形：\n`;
-            prompt += `动词（如适用）: 过去式: [形式], 过去分词: [形式], 现在分词: [形式]\n`;
-            prompt += `名词（如适用）: 复数: [形式]\n`;
-            prompt += `形容词/副词（如适用）: 比较级: [形式], 最高级: [形式]\n\n`;
-        }
-        
-        if (level >= 3) {
-            prompt += `同根词：\n`;
-            prompt += `1. [单词1] ([词性]): [中文释义]\n`;
-            prompt += `2. [单词2] ([词性]): [中文释义]\n`;
-            prompt += `3. [单词3] ([词性]): [中文释义]\n`;
-            prompt += `4. [单词4] ([词性]): [中文释义]\n`;
-            prompt += `5. [单词5] ([词性]): [中文释义]\n\n`;
-        }
-        
-        if (level >= 4) {
-            prompt += `常用搭配：\n`;
-            prompt += `1. [英文词组1] — [中文翻译]\n`;
-            prompt += `2. [英文词组2] — [中文翻译]\n`;
-            prompt += `3. [英文词组3] — [中文翻译]\n`;
-            prompt += `4. [英文词组4] — [中文翻译]\n`;
-            prompt += `5. [英文词组5] — [中文翻译]\n\n`;
-        }
-        
-        let exampleCount = level === 2 ? 1 : (level === 3 ? 2 : 3);
-        if (exampleCount > 0) {
-            prompt += `例句：\n`;
-            for (let i = 1; i <= exampleCount; i++) {
-                prompt += `${i}. [英文例句${i}]\n   翻译：[中文翻译${i}]\n`;
-            }
-        }
-        
-        prompt += `\n`;
-        prompt += `2. IF INPUT IS A PHRASE:\n`;
-        prompt += `First line (EXACTLY): [original phrase]\n\n`;
-        prompt += `释义：\n`;
-        prompt += `1. [中文释义1]\n`;
-        prompt += `2. [中文释义2]\n`;
-        prompt += `...\n\n`;
-        
-        if (level >= 2) {
-            let phraseExampleCount = level >= 3 ? (level === 4 ? 3 : 2) : 0;
-            if (phraseExampleCount > 0) {
-                prompt += `例句：\n`;
-                for (let i = 1; i <= phraseExampleCount; i++) {
-                    prompt += `${i}. [英文例句${i}]\n   翻译：[中文翻译${i}]\n`;
-                }
-            }
-        }
-        
-        prompt += `\n`;
-        prompt += `3. IF INPUT IS A SENTENCE or PARAGRAPH:\n`;
-        prompt += `- Directly provide accurate, fluent translation\n`;
-        prompt += `- Keep the translation colloquial, professional, and elegant, avoiding machine translation style\n`;
-        prompt += `- Strictly translate only the text content, do not interpret, comment or expand\n`;
-        prompt += `- Output ONLY the translation result, NO labels, NO explanations`;
-    }
-    
-    return prompt;
-}
-
 async function translate(text, from, to, options) {
     const { config, utils } = options;
     const { tauriFetch: fetch } = utils;
     
-    let { apiKey, model = "deepseek-v4-flash", intensity = "2" } = config;
+    let { apiKey, model = "deepseek-v4-flash", translationLevel = "1" } = config;
     
+    // 设置默认请求路径
     const requestPath = "https://api.deepseek.com/chat/completions";
     
     const headers = {
@@ -105,13 +12,58 @@ async function translate(text, from, to, options) {
         'Authorization': `Bearer ${apiKey}`
     }
     
-    const systemPrompt = generateSystemPrompt(intensity, to);
-    
-    const maxTokensByLevel = {
-        "1": 1000,
-        "2": 2000,
-        "3": 3000,
-        "4": 4000
+    // 根据翻译级别获取对应的系统提示语
+    const getSystemPrompt = (level) => {
+        const prompts = {
+            "1": `你是一个专业的翻译引擎，请按照以下要求进行翻译：
+
+1. 先判断输入内容类型：单个单词、词组、句子或段落
+2. 根据类型提供相应结果：
+   - 单个单词：直接给出该单词最常见的意思，无额外说明
+   - 词组：给出该词组最常见的意思，无额外说明
+   - 句子或段落：直接提供准确、流畅的翻译结果，保持译文的口语化、专业性和优雅性，避免机器翻译风格，严格限于翻译文本内容，不得对原文进行解释、评论或扩充
+
+3. 所有输出以中文形式呈现，不带任何格式标记
+
+4. 涉及词性时，名词用n.，形容词用adj.等缩写，名词的每个意思需要标注可数[C]或不可数[U]`,
+            
+            "2": `你是一个专业的翻译引擎，请按照以下要求进行翻译：
+
+1. 先判断输入内容类型：单个单词、词组、句子或段落
+2. 根据类型提供相应结果：
+   - 单个单词：以清晰、规范的格式输出该单词的所有词性及其对应的中文释义；提供单词的各种语法变形形式：动词需包含过去式、过去分词和现在分词；名词需包含复数形式；形容词需包含比较级和最高级（如适用）；提供1个双语对照例句，展示单词在实际语境中的应用
+   - 词组：给出所有该词组的意思
+   - 句子或段落：直接提供准确、流畅的翻译结果，保持译文的口语化、专业性和优雅性，避免机器翻译风格，严格限于翻译文本内容，不得对原文进行解释、评论或扩充
+
+3. 所有输出以中文形式呈现，不带任何格式标记
+
+4. 涉及词性时，名词用n.，形容词用adj.等缩写，名词的每个意思需要标注可数[C]或不可数[U]`,
+            
+            "3": `你是一个专业的翻译引擎，请按照以下要求进行翻译：
+
+1. 先判断输入内容类型：单个单词、词组、句子或段落
+2. 根据类型提供相应结果：
+   - 单个单词：以清晰、规范的格式输出该单词的所有词性及其对应的中文释义；提供单词的各种语法变形形式：动词需包含过去式、过去分词和现在分词；名词需包含复数形式；形容词需包含比较级和最高级（如适用）；列出3-5个常见同根词，每个同根词需包含词性及一个核心中文释义；提供2个双语对照例句，展示单词在实际语境中的应用
+   - 词组：给出所有该词组的意思；提供2个双语对照例句，展示该词组在不同语境中的应用；确保例句能够体现词组的典型用法和搭配模式
+   - 句子或段落：直接提供准确、流畅的翻译结果，保持译文的口语化、专业性和优雅性，避免机器翻译风格，严格限于翻译文本内容，不得对原文进行解释、评论或扩充
+
+3. 所有输出以中文形式呈现，不带任何格式标记
+
+4. 涉及词性时，名词用n.，形容词用adj.等缩写，名词的每个意思需要标注可数[C]或不可数[U]`,
+            
+            "4": `你是一个专业的翻译引擎，请按照以下要求进行翻译：
+
+1. 先判断输入内容类型：单个单词、词组、句子或段落
+2. 根据类型提供相应结果：
+   - 单个单词：以清晰、规范的格式输出该单词的所有词性及其对应的中文释义；提供单词的各种语法变形形式：动词需包含过去式、过去分词和现在分词；名词需包含复数形式；形容词需包含比较级和最高级（如适用）；列出3-5个常见同根词，每个同根词需包含词性及一个核心中文释义；提供3-5个常用词组搭配，包含英文词组及其中文翻译；提供2-3个双语对照例句，展示单词在实际语境中的应用
+   - 词组：给出所有该词组的意思；提供2-3个双语对照例句，展示该词组在不同语境中的应用；确保例句能够体现词组的典型用法和搭配模式
+   - 句子或段落：直接提供准确、流畅的翻译结果，保持译文的口语化、专业性和优雅性，避免机器翻译风格，严格限于翻译文本内容，不得对原文进行解释、评论或扩充
+
+3. 所有输出以中文形式呈现，不带任何格式标记
+
+4. 涉及词性时，名词用n.，形容词用adj.等缩写，名词的每个意思需要标注可数[C]或不可数[U]`
+        };
+        return prompts[level] || prompts["1"];
     };
     
     const body = {
@@ -119,18 +71,18 @@ async function translate(text, from, to, options) {
         messages: [
             {
                 "role": "system",
-                "content": systemPrompt
+                "content": getSystemPrompt(translationLevel)
             },
             {
                 "role": "user",
-                "content": text
+                "content": `翻译成${to}：\n${text}`
             }
         ],
         temperature: 0.1,
         top_p: 0.99,
         frequency_penalty: 0,
         presence_penalty: 0,
-        max_tokens: maxTokensByLevel[intensity] || 2000
+        max_tokens: 4000
     }
     
     let res = await fetch(requestPath, {

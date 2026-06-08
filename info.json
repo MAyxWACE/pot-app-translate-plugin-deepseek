@@ -16,16 +16,16 @@
       "default": "deepseek-v4-flash"
     },
     {
-      "key": "intensity",
-      "display": "输出强度",
+      "key": "translationLevel",
+      "display": "翻译级别",
       "type": "select",
       "options": {
-        "1": "等级1 - 基础翻译（最省Token）",
-        "2": "等级2 - 标准翻译",
-        "3": "等级3 - 详细翻译",
-        "4": "等级4 - 完整翻译（最丰富）"
+        "1": "一级（简洁翻译）",
+        "2": "二级（基础详解）",
+        "3": "三级（深度解析）",
+        "4": "四级（完整详解）"
       },
-      "default": "2"
+      "default": "1"
     },
     {
       "key": "apiKey",
